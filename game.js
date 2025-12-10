@@ -116,7 +116,7 @@ function rendermainGame() {
     const container = document.getElementById("mainGame");
     container.innerHTML = `
         <h2 class="centerTitle">Puzzle Game: Sokoban</h2>
-        <p class="centerTitle">Push all boxes onto the goal tiles!</p>
+        <p class="centerTitle">Push the yellow boxes onto the green goal tiles!</p>
         <p class="centerTitle">Use WASD or arrow keys to move.</p>
         <div id="sokoban-grid"></div>
     `;
