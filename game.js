@@ -16,11 +16,11 @@ function initmainGame() {
     // Simple Sokoban level layout
     const level = [
         "#######",
-        "# .   #",
-        "#  B  #",
-        "# ##. #",
-        "# PB  #",
-        "#     #",
+        "#.  #.#",
+        "#  B .#",
+        "#B##  #",
+        "# PB ##",
+        "#    ##",
         "#######"
     ];
 
@@ -90,16 +90,18 @@ function movePlayer(dr, dc) {
 
 function isGoalTile(r, c) {
     return (
-        (r === 1 && c === 2) ||
-        (r === 3 && c === 4)
+        (r === 1 && c === 1) ||
+        (r === 1 && c === 5) ||
+        (r === 2 && c === 5)
     );
 }
 
 function checkWinCondition() {
     // Win if all goals have boxes on them
     const goals = [
-        { r: 1, c: 2 },
-        { r: 3, c: 4 }
+        { r: 1, c: 1 },
+        { r: 1, c: 5 },
+        { r: 2, c: 5 }
     ];
 
     const complete = goals.every(g => board[g.r][g.c] === 'B');
@@ -107,7 +109,7 @@ function checkWinCondition() {
     if (complete) {
         document.getElementById("mainGame").innerHTML = `
             <h2 class="centerTitle">PUZZLE SOLVED!</h2>
-            <p class="centerTitle">The map is 3353.</p>
+            <p class="centerTitle">The map is 6543.</p>
         `;
     }
 }
