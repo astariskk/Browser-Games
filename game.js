@@ -1,110 +1,156 @@
-// SCENARIO 3: PUZZLE LOCK (4x4 LIGHTS OUT)
+// SCENARIO: SOKOBAN (Push the crates onto goal tiles)
 
-const S3_GRID_SIZE = 4;
-let s3_board = []; // 2D array representing the light state (true for on/glowing)
+const GRID_SIZE = 7;
 
-// Initialize the 4x4 Lights Out board
+// Tile types
+// ' ' = floor
+// '#' = wall
+// 'B' = box
+// '.' = goal
+// 'P' = player
+
+let board = [];
+let playerPos = { r: 0, c: 0 };
+
 function initmainGame() {
-    // 1. Create the board and initialize all lights to OFF (false)
-    s3_board = Array(S3_GRID_SIZE).fill(0).map(() => Array(S3_GRID_SIZE).fill(false));
-
-    // 2. Randomly initialize the board with a solvable pattern
-    scrambleBoard();
-
-    // 3. Render the UI
-    rendermainGame();
-}
-
-// Randomly press buttons to create a solvable, non-blank board
-function scrambleBoard() {
-    let blank = true;
-    while(blank) {
-        s3_board = Array(S3_GRID_SIZE).fill(0).map(() => Array(S3_GRID_SIZE).fill(false));
-        for (let r = 0; r < S3_GRID_SIZE; r++) {
-            for (let c = 0; c < S3_GRID_SIZE; c++) {
-                // Press a cell with 30% chance
-                if (Math.random() < 0.3) {
-                    toggleLight(r, c, true); // true means no UI update during scramble
-                }
-            }
-        }
-        // Check if the board is still blank after scrambling
-        blank = s3_board.every(row => row.every(light => light === false));
-    }
-}
-
-// Function to toggle a single light and its adjacent neighbors
-// isScrambling prevents a render loop during board initialization
-function toggleLight(r, c, isScrambling = false) {
-    const directions = [
-        [0, 0], // Center
-        [0, 1], [0, -1], // Left/Right
-        [1, 0], [-1, 0]  // Up/Down
+    // Simple Sokoban level layout
+    const level = [
+        "#######",
+        "# .   #",
+        "#  B  #",
+        "# ##. #",
+        "# PB  #",
+        "#     #",
+        "#######"
     ];
 
-    directions.forEach(([dr, dc]) => {
-        const nr = r + dr;
-        const nc = c + dc;
+    board = level.map(row => row.split(""));
 
-        if (nr >= 0 && nr < S3_GRID_SIZE && nc >= 0 && nc < S3_GRID_SIZE) {
-            // Toggle the state (true -> false, false -> true)
-            s3_board[nr][nc] = !s3_board[nr][nc];
+    // Find player position
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            if (board[r][c] === 'P') {
+                playerPos = { r, c };
+            }
         }
-    });
-
-    if (!isScrambling) {
-        rendermainGame();
-        checkWinCondition();
     }
+
+    rendermainGame();
+
+    // Listen for movement
+    document.addEventListener("keydown", handleMove);
 }
 
-// Check if all lights are off
+function handleMove(e) {
+    const keyMap = {
+        "ArrowUp": [-1, 0], "w": [-1, 0],
+        "ArrowDown": [1, 0], "s": [1, 0],
+        "ArrowLeft": [0, -1], "a": [0, -1],
+        "ArrowRight": [0, 1], "d": [0, 1]
+    };
+
+    if (!keyMap[e.key]) return;
+
+    const [dr, dc] = keyMap[e.key];
+    movePlayer(dr, dc);
+}
+
+function movePlayer(dr, dc) {
+    const pr = playerPos.r;
+    const pc = playerPos.c;
+    const nr = pr + dr;
+    const nc = pc + dc;
+
+    if (board[nr][nc] === '#') return; // hit wall
+
+    // If pushing a box
+    if (board[nr][nc] === 'B') {
+        const br = nr + dr;
+        const bc = nc + dc;
+
+        // Can't push into walls or another box
+        if (board[br][bc] === '#' || board[br][bc] === 'B') return;
+
+        // Move box
+        board[br][bc] = 'B';
+        board[nr][nc] = 'P';
+    } else {
+        // Normal movement
+        board[nr][nc] = 'P';
+    }
+
+    // Restore previous tile (goal or floor)
+    board[pr][pc] = isGoalTile(pr, pc) ? '.' : ' ';
+
+    playerPos = { r: nr, c: nc };
+
+    rendermainGame();
+    checkWinCondition();
+}
+
+function isGoalTile(r, c) {
+    return (
+        (r === 1 && c === 2) ||
+        (r === 3 && c === 4)
+    );
+}
+
 function checkWinCondition() {
-    const isCleared = s3_board.every(row => row.every(light => light === false));
-    if (isCleared) {
+    // Win if all goals have boxes on them
+    const goals = [
+        { r: 1, c: 2 },
+        { r: 3, c: 4 }
+    ];
+
+    const complete = goals.every(g => board[g.r][g.c] === 'B');
+
+    if (complete) {
         document.getElementById("mainGame").innerHTML = `
-            <h2 class = "centerTitle" >PUZZLE SOLVED!</h2>
-            <p class = "centerTitle">The map is 3533.</p>
+            <h2 class="centerTitle">PUZZLE SOLVED!</h2>
+            <p class="centerTitle">The map is 3533.</p>
         `;
     }
 }
 
-// Render the puzzle UI
 function rendermainGame() {
-    const scenarioDiv = document.getElementById("mainGame");
-    scenarioDiv.classList.remove("hidden");
-    scenarioDiv.innerHTML = `
-        <h2 class = "centerTitle">Puzzle game: Lights Out (4x4 Puzzle)</h2>
-        <p class = "centerTitle" >Click a cell to toggle its light and the adjacent ones. Clear the board to win!</p>
-        <p class = "centerTitle" > refresh the page to restart the puzzle. </p>
-        <div id="lights-out-grid"></div>
+    const container = document.getElementById("mainGame");
+    container.innerHTML = `
+        <h2 class="centerTitle">Puzzle Game: Sokoban</h2>
+        <p class="centerTitle">Push all boxes onto the goal tiles!</p>
+        <p class="centerTitle">Use WASD or arrow keys to move.</p>
+        <div id="sokoban-grid"></div>
     `;
 
-    const gridDiv = document.getElementById("lights-out-grid");
-    gridDiv.style.display = 'grid';
-    gridDiv.style.gridTemplateColumns = `repeat(${S3_GRID_SIZE}, 60px)`;
-    gridDiv.style.gap = '5px';
-    gridDiv.style.margin = '20px auto';
-    gridDiv.style.width = 'fit-content';
+    const grid = document.getElementById("sokoban-grid");
+    grid.style.display = "grid";
+    grid.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 50px)`;
+    grid.style.gap = "4px";
+    grid.style.margin = "20px auto";
+    grid.style.width = "fit-content";
 
-    for (let r = 0; r < S3_GRID_SIZE; r++) {
-        for (let c = 0; c < S3_GRID_SIZE; c++) {
-            const cell = document.createElement('button');
-            cell.dataset.row = r;
-            cell.dataset.col = c;
-            cell.style.width = '60px';
-            cell.style.height = '60px';
-            cell.style.border = '1px solid #333';
-            cell.style.borderRadius = '5px';
-            cell.style.cursor = 'pointer';
-            
-            // Set background color based on light state
-            cell.style.backgroundColor = s3_board[r][c] ? 'yellow' : '#333';
-            
-            // Add click handler
-            cell.onclick = () => toggleLight(r, c);
-            
-            gridDiv.appendChild(cell);
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            const cell = document.createElement("div");
+            cell.style.width = "50px";
+            cell.style.height = "50px";
+            cell.style.borderRadius = "4px";
+
+            const char = board[r][c];
+
+            // Visual representation
+            if (char === '#') {
+                cell.style.background = "#333";
+            } else if (char === 'P') {
+                cell.style.background = "lightblue";
+            } else if (char === 'B') {
+                cell.style.background = "gold";
+            } else if (isGoalTile(r, c)) {
+                cell.style.background = "green";
+            } else {
+                cell.style.background = "#999";
+            }
+
+            grid.appendChild(cell);
         }
     }
 }
