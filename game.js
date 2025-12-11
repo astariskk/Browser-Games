@@ -95,7 +95,7 @@ function movePlayer(dr, dc) {
 function isGoalTile(r, c) {
     return (
         (r === 1 && c === 1) ||
-        (r === 2 && c === 4) ||        
+        (r === 2 && c === 3) ||        
         (r === 3 && c === 2)
     );
 }
@@ -103,7 +103,7 @@ function isGoalTile(r, c) {
 function checkWinCondition() {
     const goals = [
         { r: 1, c: 1 },
-        { r: 2, c: 4 },        
+        { r: 2, c: 3 },        
         { r: 3, c: 2 }
     ];
 
