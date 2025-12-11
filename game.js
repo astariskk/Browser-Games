@@ -120,6 +120,7 @@ function rendermainGame() {
     const container = document.getElementById("mainGame");
     container.innerHTML = `
         <h2 class="centerTitle">Sokoban: Push the Boxes</h2>
+        <p class="centerTitle" style="color:#93c5fd;">Push the yellow boxes into the green goals </p>        
         <p class="centerTitle" style="color:#93c5fd;">Use the buttons or WASD/Arrow keys to move.</p>
         <div id="sokoban-grid"></div>
     `;
