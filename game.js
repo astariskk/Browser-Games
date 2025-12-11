@@ -6,12 +6,13 @@ let playerPos = { r: 0, c: 0 };
 function initmainGame() {
     const level = [
         "#######",
-        "#   ###",
-        "# .BB.#",
-        "#   # #",
-        "# P   #",        
-        "########",
-        "########"
+        "# PB  #",
+        "###BB #",
+        "##    #",
+        "##  ###",
+        "##  ###",  
+        "#######",                                     
+     
     ];
 
     board = level.map(row => row.split(""));
@@ -93,15 +94,17 @@ function movePlayer(dr, dc) {
 
 function isGoalTile(r, c) {
     return (
-        (r === 2 && c === 2) ||
-        (r === 2 && c === 5)
+        (r === 1 && c === 1) ||
+        (r === 2 && c === 4) ||        
+        (r === 3 && c === 2)
     );
 }
 
 function checkWinCondition() {
     const goals = [
-        { r: 2, c: 2 },
-        { r: 2, c: 5 },
+        { r: 1, c: 1 },
+        { r: 2, c: 4 },        
+        { r: 3, c: 2 }
     ];
 
     const complete = goals.every(g => board[g.r][g.c] === 'B');
