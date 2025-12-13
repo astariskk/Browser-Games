@@ -1,17 +1,19 @@
-const GRID_SIZE = 7;
+const GRID_SIZE = 9;
 
 let board = [];
 let playerPos = { r: 0, c: 0 };
 
 function initmainGame() {
     const level = [
-        "#######",
-        "##P  ##",
-        "#  #  #",
-        "# BBB #",
-        "#     #",        
-        "##   ##",
-        "#######",        
+        "#########",
+        "## #   ##",
+        "##  B  ##",
+        "## #BB  #",
+        "##  BP###",
+        "##   B###",
+        "###    ##",
+        "###  ####",
+        "#########",     
      
     ];
 
@@ -94,17 +96,21 @@ function movePlayer(dr, dc) {
 
 function isGoalTile(r, c) {
     return (
-        (r === 3 && c === 3) ||
-        (r === 4 && c === 3) ||
-        (r === 5 && c === 3)
+        (r === 1 && c === 2) ||
+        (r === 4 && c === 2) ||
+        (r === 3 && c === 5) ||
+        (r === 3 && c === 6) ||
+        (r === 3 && c === 7)                
     );
 }
 
 function checkWinCondition() {
     const goals = [
-        { r: 3, c: 3 },
-        { r: 4, c: 3 },
-        { r: 5, c: 3 }
+        { r: 1, c: 2 },
+        { r: 4, c: 2 },
+        { r: 3, c: 5 },
+        { r: 3, c: 6 },
+        { r: 3, c: 7 }
     ];
 
     const complete = goals.every(g => board[g.r][g.c] === 'B');
@@ -112,7 +118,7 @@ function checkWinCondition() {
     if (complete) {
         document.getElementById("mainGame").innerHTML = `
             <h2 class="centerTitle" style="color:#10b981;">PUZZLE SOLVED!</h2>
-            <p class="centerTitle">Room number is 45645</p>
+            <p class="centerTitle">Room number is 12312</p>
         `;
         document.getElementById("controls").style.display = 'none';
         document.removeEventListener("keydown", handleMove);
