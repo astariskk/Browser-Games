@@ -1,23 +1,26 @@
-const GRID_SIZE = 9;
+const GRID_SIZE = 11;
 
 let board = [];
+let goals = [];
 let playerPos = { r: 0, c: 0 };
 
 function initmainGame() {
     const level = [
-        "#########",
-        "## #   ##",
-        "##  B  ##",
-        "## #BB  #",
-        "##  BP###",
-        "##   B###",
-        "###    ##",
-        "###  ####",
-        "#########",     
-     
+        "###########",
+        "##  . .####",
+        "#.   B ####",
+        "##  B  ####",                
+        "###  BB####",
+        "##. BBP ###",
+        "##.  BB   #",
+        "##  ##   ##",
+        "##. #.. ###",
+        "###########",
+        "###########",        
     ];
 
     board = level.map(row => row.split(""));
+    parseGoals();
 
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
@@ -30,6 +33,27 @@ function initmainGame() {
     rendermainGame();
     document.addEventListener("keydown", handleMove);
 }
+
+/* ---------------- GOAL PARSING ---------------- */
+
+function parseGoals() {
+    goals = [];
+
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            if (board[r][c] === '.') {
+                goals.push({ r, c });
+                board[r][c] = ' '; // turn into floor
+            }
+        }
+    }
+}
+
+function isGoalTile(r, c) {
+    return goals.some(g => g.r === r && g.c === c);
+}
+
+/* ---------------- INPUT ---------------- */
 
 function handleMove(e) {
     const keyMap = {
@@ -45,47 +69,36 @@ function handleMove(e) {
     movePlayer(dr, dc);
 }
 
+/* ---------------- MOVEMENT ---------------- */
+
 function movePlayer(dr, dc) {
     const pr = playerPos.r;
     const pc = playerPos.c;
     const nr = pr + dr;
     const nc = pc + dc;
 
-    // Out of bounds
     if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) return;
 
     const target = board[nr][nc];
 
-    // Wall
     if (target === '#') return;
 
-    // --- If pushing a box ---
+    // Push box
     if (target === 'B') {
         const br = nr + dr;
         const bc = nc + dc;
 
-        // Out of bounds for box
         if (br < 0 || br >= GRID_SIZE || bc < 0 || bc >= GRID_SIZE) return;
 
         const boxDest = board[br][bc];
-
-        // Can't push into wall or another box
         if (boxDest === '#' || boxDest === 'B') return;
 
-        // Move box
         board[br][bc] = 'B';
     }
 
-    // --- Move player ---
+    // Move player
     board[nr][nc] = 'P';
-
-    // Restore previous tile
-    board[pr][pc] = isGoalTile(pr, pc) ? '.' : ' ';
-
-    // If player stood on a goal tile, keep the goal underneath
-    if (isGoalTile(nr, nc) && target !== 'B') {
-        board[nr][nc] = 'P';
-    }
+    board[pr][pc] = isGoalTile(pr, pc) ? ' ' : ' ';
 
     playerPos = { r: nr, c: nc };
 
@@ -93,44 +106,33 @@ function movePlayer(dr, dc) {
     checkWinCondition();
 }
 
-
-function isGoalTile(r, c) {
-    return (
-        (r === 1 && c === 2) ||
-        (r === 4 && c === 2) ||
-        (r === 3 && c === 5) ||
-        (r === 3 && c === 6) ||
-        (r === 3 && c === 7)                
-    );
-}
+/* ---------------- WIN CHECK ---------------- */
 
 function checkWinCondition() {
-    const goals = [
-        { r: 1, c: 2 },
-        { r: 4, c: 2 },
-        { r: 3, c: 5 },
-        { r: 3, c: 6 },
-        { r: 3, c: 7 }
-    ];
-
     const complete = goals.every(g => board[g.r][g.c] === 'B');
 
     if (complete) {
         document.getElementById("mainGame").innerHTML = `
             <h2 class="centerTitle" style="color:#10b981;">PUZZLE SOLVED!</h2>
-            <p class="centerTitle">Room number is 12312</p>
+            <p class="centerTitle">Room number is 45645</p>
         `;
         document.getElementById("controls").style.display = 'none';
         document.removeEventListener("keydown", handleMove);
     }
 }
 
+/* ---------------- RENDER ---------------- */
+
 function rendermainGame() {
     const container = document.getElementById("mainGame");
     container.innerHTML = `
         <h2 class="centerTitle">Sokoban: Push the Boxes</h2>
-        <p class="centerTitle" style="color:#93c5fd;">Push the yellow boxes into the green goals </p>        
-        <p class="centerTitle" style="color:#93c5fd;">Use the buttons or WASD/Arrow keys to move.</p>
+        <p class="centerTitle" style="color:#93c5fd;">
+            Push the yellow boxes into the green goals
+        </p>
+        <p class="centerTitle" style="color:#93c5fd;">
+            Use WASD or Arrow keys to move
+        </p>
         <div id="sokoban-grid"></div>
     `;
 
@@ -150,51 +152,33 @@ function rendermainGame() {
             cell.style.display = "flex";
             cell.style.justifyContent = "center";
             cell.style.alignItems = "center";
-            cell.style.transition = "background 0.2s";
 
             const char = board[r][c];
             const isGoal = isGoalTile(r, c);
 
-            let bgColor = "#64748b";
-            let content = '';
+            let bgColor = "#334155";
 
             if (char === '#') {
-                // Wall
                 bgColor = "#1e293b";
             } else if (isGoal) {
-                // Goal tile (empty)
-                bgColor = "#10b981"; 
-            } else {
-                // Floor tile
-                bgColor = "#334155";
+                bgColor = "#10b981";
             }
 
             if (char === 'P') {
-                // Player
                 bgColor = "#3b82f6";
-                content = '';
             } else if (char === 'B') {
-                // Box
-                content = '';
                 bgColor = isGoal ? "#f59e0b" : "#fcd34d";
-            } else if (char === '.') {
-                // Empty Goal tile
-                content = '';
             }
-            
-            cell.style.background = bgColor;
-            cell.textContent = content;
-            cell.style.fontSize = "30px";
-            cell.style.boxShadow = "inset 0 0 5px rgba(0,0,0,0.1)";
 
+            cell.style.background = bgColor;
+            cell.style.boxShadow = "inset 0 0 5px rgba(0,0,0,0.1)";
             grid.appendChild(cell);
         }
     }
-    // Ensure controls are visible unless the game is won
+
     document.getElementById("controls").style.display = 'flex';
 }
 
-// Start the game when the window loads
-window.onload = function () {
-    initmainGame();
-}
+/* ---------------- START ---------------- */
+
+window.onload = initmainGame;
