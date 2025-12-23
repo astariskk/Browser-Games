@@ -1,183 +1,171 @@
-const GRID_SIZE = 9;
+const levelLayout = [
+    "YYYYYRRRRR",
+    "YYYYYRRRRR",
+    "YYBBBBBBRR",
+    "YYRRRYYYRR",
+    "BBRRRYYYGG",
+    "BBYYYRRRGG",
+    "BBYYYRRRGG",
+    "GGGGGGGGGG",
+    "BBYYYRRRGG",
+    "BBYYYRRRGG"
+];
 
-let board = [];
-let goals = [];
-let playerPos = { r: 0, c: 0 };
+const GRID_SIZE = levelLayout.length;
 
-function initmainGame() {
-    const level = [
-        "#########",
-        "###   ###",
-        "#.PB  ###",
-        "### B.###",
-        "#.##B ###",
-        "# # . ###",
-        "#B.BBB.##",   
-        "#   .  ##",                                 
-        "#########"        
-      
-    ];
+let grid = [];
+let selectedColor = 'R';
+let isFlooding = false;
 
-    board = level.map(row => row.split(""));
-    parseGoals();
 
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-            if (board[r][c] === 'P') {
-                playerPos = { r, c };
-            }
+// Color lookup
+const COLORS = {
+    R: "#FF6961",
+    Y: "#FDFD96",
+    B: "#8fe6f1ff",
+    G: "#80EF80"
+};
+const SHADOW = {
+    R: "#c24e48ff",
+    Y: "#b3b369ff",
+    B: "#68a3acff",
+    G: "#55a355ff"
+};
+
+/* ---------------- INIT ---------------- */
+function initGame() {
+    grid = levelLayout.map(row => row.split(""));
+    movesLeft = 4;
+    selectedColor = 'R';
+    renderGrid();
+    renderControls();
+    selectColor(selectedColor);
+}
+
+/* ---------------- ANIMATED FLOOD FILL ---------------- */
+function animatedFloodFill(r, c, originalColor, targetColor) {
+    isFlooding = true;
+    const queue = [[r, c]];
+    const visited = new Set();
+
+    function step() {
+        if (queue.length === 0) {
+            isFlooding = false; 
+            checkWin();              
+            return;
         }
-    }
-
-    rendermainGame();
-    document.addEventListener("keydown", handleMove);
-}
-
-/* ---------------- GOAL PARSING ---------------- */
-
-function parseGoals() {
-    goals = [];
-
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-            if (board[r][c] === '.') {
-                goals.push({ r, c });
-                board[r][c] = ' '; // turn into floor
-            }
+        const [x, y] = queue.shift();
+        const key = `${x},${y}`;
+        if (visited.has(key)) {
+            step();
+            return;
         }
-    }
-}
+        visited.add(key);
 
-function isGoalTile(r, c) {
-    return goals.some(g => g.r === r && g.c === c);
-}
+        if (grid[x][y] !== originalColor) {
+            step();
+            return;
+        }
 
-/* ---------------- INPUT ---------------- */
+        grid[x][y] = targetColor;
+        renderGrid();
 
-function handleMove(e) {
-    const keyMap = {
-        "ArrowUp": [-1, 0], "w": [-1, 0],
-        "ArrowDown": [1, 0], "s": [1, 0],
-        "ArrowLeft": [0, -1], "a": [0, -1],
-        "ArrowRight": [0, 1], "d": [0, 1]
-    };
+        // Add neighbors
+        [[x-1,y],[x+1,y],[x,y-1],[x,y+1]].forEach(([nx,ny]) => {
+            if(nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE){
+                queue.push([nx,ny]);
+            }
+        });
 
-    if (!keyMap[e.key]) return;
-
-    const [dr, dc] = keyMap[e.key];
-    movePlayer(dr, dc);
-}
-
-/* ---------------- MOVEMENT ---------------- */
-
-function movePlayer(dr, dc) {
-    const pr = playerPos.r;
-    const pc = playerPos.c;
-    const nr = pr + dr;
-    const nc = pc + dc;
-
-    if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) return;
-
-    const target = board[nr][nc];
-
-    if (target === '#') return;
-
-    // Push box
-    if (target === 'B') {
-        const br = nr + dr;
-        const bc = nc + dc;
-
-        if (br < 0 || br >= GRID_SIZE || bc < 0 || bc >= GRID_SIZE) return;
-
-        const boxDest = board[br][bc];
-        if (boxDest === '#' || boxDest === 'B') return;
-
-        board[br][bc] = 'B';
+        setTimeout(step, 50); // delay for animation
     }
 
-    // Move player
-    board[nr][nc] = 'P';
-    board[pr][pc] = isGoalTile(pr, pc) ? ' ' : ' ';
-
-    playerPos = { r: nr, c: nc };
-
-    rendermainGame();
-    checkWinCondition();
+    step();
 }
 
-/* ---------------- WIN CHECK ---------------- */
+/* ---------------- TILE CLICK ---------------- */
+function handleTileClick(r, c) {
+    if (movesLeft <= 0) return;
 
-function checkWinCondition() {
-    const complete = goals.every(g => board[g.r][g.c] === 'B');
+    const originalColor = grid[r][c];
+    if (originalColor === selectedColor) return;
 
-    if (complete) {
-        document.getElementById("mainGame").innerHTML = `
-            <h2 class="centerTitle" style="color:#10b981;">PUZZLE SOLVED!</h2>
-            <p class="centerTitle">Room number is 75632</p>
-        `;
-        document.getElementById("controls").style.display = 'none';
-        document.removeEventListener("keydown", handleMove);
-    }
+    movesLeft--;
+
+    renderControls();
+    animatedFloodFill(r, c, originalColor, selectedColor);
 }
 
-/* ---------------- RENDER ---------------- */
-
-function rendermainGame() {
-    const container = document.getElementById("mainGame");
-    container.innerHTML = `
-        <h2 class="centerTitle">Sokoban: Push the Boxes</h2>
-        <p class="centerTitle" style="color:#93c5fd;">
-            Push the yellow boxes into the green goals
-        </p>
-        <p class="centerTitle" style="color:#93c5fd;">
-            Use WASD or Arrow keys to move
-        </p>
-        <div id="sokoban-grid"></div>
-    `;
-
-    const grid = document.getElementById("sokoban-grid");
-    grid.style.display = "grid";
-    grid.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 50px)`;
-    grid.style.gap = "2px";
-    grid.style.margin = "20px auto";
-    grid.style.width = "fit-content";
+/* ---------------- RENDER GRID ---------------- */
+function renderGrid() {
+    const container = document.getElementById("sokoban-grid");
+    container.innerHTML = "";
+    container.style.display = "grid";
+    container.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 40px)`;
+    container.style.gridGap = "3px";
 
     for (let r = 0; r < GRID_SIZE; r++) {
         for (let c = 0; c < GRID_SIZE; c++) {
             const cell = document.createElement("div");
-            cell.style.width = "50px";
-            cell.style.height = "50px";
-            cell.style.borderRadius = "4px";
-            cell.style.display = "flex";
-            cell.style.justifyContent = "center";
-            cell.style.alignItems = "center";
-
-            const char = board[r][c];
-            const isGoal = isGoalTile(r, c);
-
-            let bgColor = "#334155";
-
-            if (char === '#') {
-                bgColor = "#1e293b";
-            } else if (isGoal) {
-                bgColor = "#10b981";
-            }
-
-            if (char === 'P') {
-                bgColor = "#3b82f6";
-            } else if (char === 'B') {
-                bgColor = isGoal ? "#f59e0b" : "#fcd34d";
-            }
-
-            cell.style.background = bgColor;
-            cell.style.boxShadow = "inset 0 0 5px rgba(0,0,0,0.1)";
-            grid.appendChild(cell);
+            cell.className = "tile";
+            cell.style.background = COLORS[grid[r][c]];
+            cell.onclick = () => handleTileClick(r, c);
+            container.appendChild(cell);
         }
     }
-
-    document.getElementById("controls").style.display = 'flex';
 }
 
-/* ---------------- START ---------------- */
+/* ---------------- CONTROLS ---------------- */
+function renderControls() {
+    const container = document.getElementById("controls");
+    container.innerHTML = `
+        <div id="moves-left">Moves Left: ${movesLeft}</div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+            <button class="color-btn" onclick="selectColor('R')" style="background:${COLORS.R}; box-shadow: 0 4px ${SHADOW.R};"></button>
+            <button class="color-btn" onclick="selectColor('Y')" style="background:${COLORS.Y}; box-shadow: 0 4px ${SHADOW.Y};"></button>
+            <button class="color-btn" onclick="selectColor('B')" style="background:${COLORS.B}; box-shadow: 0 4px ${SHADOW.B};"></button>
+            <button class="color-btn" onclick="selectColor('G')" style="background:${COLORS.G}; box-shadow: 0 4px ${SHADOW.G};"></button>
+        </div>
+        <button id="reset-btn" style="margin-top:10px;">Reset Level</button>
+    `;
 
-window.onload = initmainGame;
+    document.getElementById("reset-btn").onclick = initGame;
+}
+
+/* ---------------- COLOR SELECT ---------------- */
+function selectColor(color) {
+    selectedColor = color;
+
+    // remove active class from all buttons
+    document.querySelectorAll(".color-btn").forEach(btn => {
+        btn.classList.remove("active");
+    });
+
+    // add active class to the clicked button
+    const clickedBtn = document.querySelector(`.color-btn[onclick="selectColor('${color}')"]`);
+    if (clickedBtn) {
+        clickedBtn.classList.add("active");
+    }
+}
+
+/* ---------------- WIN CHECK ---------------- */
+function checkWin() {
+    const uniqueColors = new Set(grid.flat());
+
+    if (uniqueColors.size === 1) {
+        const container = document.getElementById("game-wrapper");
+        container.innerHTML = `
+            <h2 class="centerTitle" style="color:#10b981;">🎉 PUZZLE SOLVED!</h2>
+            <p class="centerTitle">Room number is 85967</p>
+            <button onclick="location.reload()">Play Again</button>
+        `;
+    } else if (movesLeft <= 0) {
+        const controls = document.getElementById("controls");
+        controls.innerHTML = `
+            <div class="win-msg">❌ Out of Moves</div>
+            <button onclick="initGame()">Try Again</button>
+        `;
+    }
+}
+
+window.onload = initGame;
