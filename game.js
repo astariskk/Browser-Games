@@ -1,14 +1,14 @@
 const levelLayout = [
-    "YYYYYRRRRR",
-    "YYYYYRRRRR",
-    "YYBBBBBBRR",
-    "YYRRRYYYRR",
-    "BBRRRYYYGG",
-    "BBYYYRRRGG",
-    "BBYYYRRRGG",
-    "GGGGGGGGGG",
-    "BBYYYRRRGG",
-    "BBYYYRRRGG"
+    "BBBRRRGGGY",
+    "YBBBRRRGGG",
+    "GYBBBRRRGG",
+    "GGYBBBRRRG",
+    "GGGYBBBRRR",
+    "RGGGYBBBRR",
+    "RRGGGYBBBB",
+    "RRRGGGYBBB",
+    "YRRRGGGYBB",
+    "YYRRRGGGYB"
 ];
 
 const GRID_SIZE = levelLayout.length;
@@ -16,7 +16,6 @@ const GRID_SIZE = levelLayout.length;
 let grid = [];
 let selectedColor = 'R';
 let isFlooding = false;
-
 
 // Color lookup
 const COLORS = {
@@ -32,10 +31,14 @@ const SHADOW = {
     G: "#55a355ff"
 };
 
+const sounds = {
+    click: new Audio('pop.mp3'),
+}
+
 /* ---------------- INIT ---------------- */
 function initGame() {
     grid = levelLayout.map(row => row.split(""));
-    movesLeft = 4;
+    movesLeft = 5;
     selectedColor = 'R';
     renderGrid();
     renderControls();
@@ -62,13 +65,14 @@ function animatedFloodFill(r, c, originalColor, targetColor) {
         }
         visited.add(key);
 
-        if (grid[x][y] !== originalColor) {
+        if (grid[x][y] !== originalColor) {           
             step();
             return;
         }
 
         grid[x][y] = targetColor;
-        renderGrid();
+        renderGrid();      
+        new Audio('pop.mp3').play();         
 
         // Add neighbors
         [[x-1,y],[x+1,y],[x,y-1],[x,y+1]].forEach(([nx,ny]) => {
@@ -91,6 +95,8 @@ function handleTileClick(r, c) {
     if (originalColor === selectedColor) return;
 
     movesLeft--;
+
+    sounds.click.play();
 
     renderControls();
     animatedFloodFill(r, c, originalColor, selectedColor);
@@ -155,7 +161,7 @@ function checkWin() {
     if (uniqueColors.size === 1) {
         const container = document.getElementById("game-wrapper");
         container.innerHTML = `
-            <h2 class="centerTitle" style="color:#10b981;">🎉 PUZZLE SOLVED!</h2>
+            <h2 class="centerTitle" style="color:#10b981;">🎉 PUZZLE SOLVED! 🎉</h2>
             <p class="centerTitle">Room number is 85967</p>
             <button onclick="location.reload()">Play Again</button>
         `;
