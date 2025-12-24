@@ -38,7 +38,7 @@ const sounds = {
 /* ---------------- INIT ---------------- */
 function initGame() {
     grid = levelLayout.map(row => row.split(""));
-    movesLeft = 9;
+    movesLeft = 8;
     selectedColor = 'R';
     renderGrid();
     renderControls();
