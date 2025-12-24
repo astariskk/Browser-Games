@@ -1,14 +1,14 @@
 const levelLayout = [
-    "BBBRRRGGGY",
-    "YBBBRRRGGG",
-    "GYBBBRRRGG",
-    "GGYBBBRRRG",
-    "GGGYBBBRRR",
-    "RGGGYBBBRR",
-    "RRGGGYBBBB",
-    "RRRGGGYBBB",
-    "YRRRGGGYBB",
-    "YYRRRGGGYB"
+    "BYYYBBGGYY",
+    "BBYYYBGGGY",
+    "GGGYYYGGGG",
+    "GGGBYYYGGG",
+    "GGGBBYYYGG",
+    "RRRBBBYYYG",
+    "RRRBBBRYYY",
+    "RRRBBBRRYY",
+    "BBBBBBRRRY",    
+    "BBBBBBRRRR"
 ];
 
 const GRID_SIZE = levelLayout.length;
@@ -38,7 +38,7 @@ const sounds = {
 /* ---------------- INIT ---------------- */
 function initGame() {
     grid = levelLayout.map(row => row.split(""));
-    movesLeft = 5;
+    movesLeft = 4;
     selectedColor = 'R';
     renderGrid();
     renderControls();
