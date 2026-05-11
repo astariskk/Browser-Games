@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Pro Puzzle Editor</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --panel: #1e1e1e;
+            --accent: #3d5afe;
+            --text: #e0e0e0;
+            --tile-size: 40px;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding-top: 70px; display: flex; flex-direction: column; align-items: center; }
+
+        /* --- Sticky Toolbar --- */
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--panel);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-x: auto;
+        }
+
+        .tool-group { display: flex; gap: 5px; border-right: 1px solid #444; padding-right: 15px; align-items: center; }
+        .tool-group:last-child { border: none; }
+
+        button {
+            background: #333; color: white; border: none; padding: 8px 12px;
+            border-radius: 6px; cursor: pointer; font-size: 13px; transition: 0.2s;
+        }
+        button:hover { background: #444; }
+        button.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+        input[type="number"] {
+            width: 50px; background: #333; border: 1px solid #444; color: white;
+            padding: 5px; border-radius: 4px;
+        }
+
+        /* --- Main Layout --- */
+        .editor-container { display: flex; gap: 20px; padding: 20px; width: 100%; max-width: 1400px; height: calc(100vh - 80px); }
+        
+        .viewport {
+            flex: 1; background: #000; border-radius: 8px; overflow: auto;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid #333; position: relative;
+        }
+
+        #grid { 
+            display: grid; gap: 1px; background: #333; border: 1px solid #333;
+            user-select: none;
+        }
+
+        .tile {
+            width: var(--tile-size); height: var(--tile-size);
+            background: #222; cursor: crosshair;
+        }
+
+        /* --- Sidebar & Output --- */
+        .sidebar { width: 300px; display: flex; flex-direction: column; gap: 20px; }
+        .side-panel { background: var(--panel); padding: 15px; border-radius: 8px; }
+        
+        .color-palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .color-swatch { 
+            aspect-ratio: 1; border-radius: 4px; cursor: pointer; border: 2px solid transparent; 
+        }
+        .color-swatch.active { border-color: white; transform: scale(1.1); }
+
+        textarea {
+            width: 100%; height: 200px; background: #000; color: #0f0;
+            font-family: monospace; font-size: 12px; border: none; padding: 10px; border-radius: 4px;
+        }
+
+        .undo-redo-info { font-size: 11px; color: #888; margin-top: 5px; }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+<div class="toolbar">
+    <div class="tool-group">
+        <button id="btn-brush" class="active" onclick="setTool('brush')">🖌️ Brush</button>
+        <button id="btn-line" onclick="setTool('line')">📏 Line</button>
+        <button id="btn-rect" onclick="setTool('rect')">🟦 Rect</button>
+        <button id="btn-bucket" onclick="setTool('bucket')">🪣 Bucket</button>
+    </div>
+    
+    <div class="tool-group">
+        <label>Size:</label>
+        <input type="number" id="rows" value="10" onchange="resizeGrid()">
+        <span>×</span>
+        <input type="number" id="cols" value="15" onchange="resizeGrid()">
+    </div>
+
+    <div class="tool-group">
+        <button onclick="zoom(0.1)">➕</button>
+        <button onclick="zoom(-0.1)">➖</button>
+        <button onclick="undo()">Undo</button>
+        <button onclick="redo()">Redo</button>
+    </div>
+
+    <div class="tool-group">
+        <button onclick="importLayout()" style="background: #4caf50;">Import</button>
+        <button onclick="copyLevelLayout()" style="background: var(--accent);">Copy Code</button>
+    </div>
+</div>
+
+<div class="editor-container">
+    <div class="viewport">
+        <div id="grid"></div>
+    </div>
+
+    <div class="sidebar">
+        <div class="side-panel">
+            <h4 style="margin-top:0">Palette</h4>
+            <div class="color-palette" id="palette"></div>
+        </div>
+        <div class="side-panel">
+            <h4 style="margin-top:0">Live Export</h4>
+            <textarea id="output" readonly></textarea>
+        </div>
+    </div>
+</div>
+
+<script>
+    const COLORS = { R: "#FF6961", Y: "#FDFD96", B: "#8fe6f1", G: "#80EF80", '.': "#222" };
+    let gridData = [];
+    let selectedColor = 'R';
+    let currentTool = 'brush';
+    let isDrawing = false;
+    let startPos = null;
+    let zoomLevel = 1.0;
+    
+    // History Management
+    let history = [];
+    let historyStep = -1;
+
+    function init() {
+        setupPalette();
+        resizeGrid(true);
+        window.addEventListener('keydown', e => {
+            if (e.ctrlKey && e.key === 'z') undo();
+            if (e.ctrlKey && e.key === 'y') redo();
+        });
+    }
+
+    function setupPalette() {
+        const container = document.getElementById('palette');
+        Object.keys(COLORS).forEach(key => {
+            if (key === '.') return;
+            const swatch = document.createElement('div');
+            swatch.className = `color-swatch ${key === selectedColor ? 'active' : ''}`;
+            swatch.style.background = COLORS[key];
+            swatch.dataset.color = key;
+            swatch.onclick = () => {
+                selectedColor = key;
+                document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                swatch.classList.add('active');
+            };
+            container.appendChild(swatch);
+        });
+    }
+
+    function resizeGrid(isInitial = false) {
+        saveHistory();
+        const r = parseInt(document.getElementById('rows').value);
+        const c = parseInt(document.getElementById('cols').value);
+        
+        let newGrid = Array(r).fill().map(() => Array(c).fill('.'));
+        
+        if (!isInitial) {
+            for(let i=0; i < Math.min(r, gridData.length); i++) {
+                for(let j=0; j < Math.min(c, gridData[0].length); j++) {
+                    newGrid[i][j] = gridData[i][j];
+                }
+            }
+        }
+        
+        gridData = newGrid;
+        render();
+    }
+
+    function render() {
+        const grid = document.getElementById('grid');
+        grid.style.gridTemplateColumns = `repeat(${gridData[0].length}, var(--tile-size))`;
+        grid.innerHTML = '';
+
+        gridData.forEach((row, r) => {
+            row.forEach((cell, c) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.style.backgroundColor = COLORS[cell];
+                tile.onmousedown = (e) => handleMouseDown(e, r, c);
+                tile.onmouseenter = () => handleMouseEnter(r, c);
+                grid.appendChild(tile);
+            });
+        });
+        window.addEventListener('mouseup', handleMouseUp);
+        generateOutput();
+    }
+
+    function setTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.tool-group button').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${tool}`).classList.add('active');
+    }
+
+    /* --- Drawing Logic --- */
+
+    function handleMouseDown(e, r, c) {
+        isDrawing = true;
+        const colorToUse = e.button === 2 ? '.' : selectedColor;
+        saveHistory();
+
+        if (currentTool === 'brush') {
+            paintCell(r, c, colorToUse);
+        } else if (currentTool === 'bucket') {
+            floodFill(r, c, gridData[r][c], colorToUse);
+        } else {
+            startPos = { r, c, color: colorToUse };
+        }
+    }
+
+    function handleMouseEnter(r, c) {
+        if (!isDrawing) return;
+        if (currentTool === 'brush') {
+            paintCell(r, c, selectedColor);
+        }
+    }
+
+    function handleMouseUp(e) {
+        if (!isDrawing) return;
+        if ((currentTool === 'rect' || currentTool === 'line') && startPos) {
+            const color = startPos.color;
+            if (currentTool === 'rect') {
+                drawRect(startPos.r, startPos.c, currentR, currentC, color);
+            } else {
+                drawLine(startPos.r, startPos.c, currentR, currentC, color);
+            }
+        }
+        isDrawing = false;
+        startPos = null;
+        render();
+    }
+
+    let currentR, currentC;
+    function handleMouseEnter(r, c) {
+        currentR = r; currentC = c;
+        if (!isDrawing) return;
+        if (currentTool === 'brush') paintCell(r, c, selectedColor);
+    }
+
+    function paintCell(r, c, color) {
+        gridData[r][c] = color;
+        render(); // Live update
+    }
+
+    function drawRect(r1, c1, r2, c2, color) {
+        for (let i = Math.min(r1, r2); i <= Math.max(r1, r2); i++) {
+            for (let j = Math.min(c1, c2); j <= Math.max(c1, c2); j++) {
+                gridData[i][j] = color;
+            }
+        }
+    }
+
+    function drawLine(r1, c1, r2, c2, color) {
+        if (Math.abs(r1 - r2) > Math.abs(c1 - c2)) {
+            for (let i = Math.min(r1, r2); i <= Math.max(r1, r2); i++) gridData[i][c1] = color;
+        } else {
+            for (let j = Math.min(c1, c2); j <= Math.max(c1, c2); j++) gridData[r1][j] = color;
+        }
+    }
+
+    function floodFill(r, c, target, replacement) {
+        if (target === replacement) return;
+        if (gridData[r][c] !== target) return;
+        
+        const stack = [[r, c]];
+        while(stack.length) {
+            const [currR, currC] = stack.pop();
+            if (gridData[currR][currC] === target) {
+                gridData[currR][currC] = replacement;
+                if (currR > 0) stack.push([currR - 1, currC]);
+                if (currR < gridData.length - 1) stack.push([currR + 1, currC]);
+                if (currC > 0) stack.push([currR, currC - 1]);
+                if (currC < gridData[0].length - 1) stack.push([currR, currC + 1]);
+            }
+        }
+        render();
+    }
+
+    /* --- Systems --- */
+
+    function zoom(amt) {
+        zoomLevel += amt;
+        document.documentElement.style.setProperty('--tile-size', (40 * zoomLevel) + 'px');
+    }
+
+    function saveHistory() {
+        history = history.slice(0, historyStep + 1);
+        history.push(JSON.stringify(gridData));
+        historyStep++;
+    }
+
+    function undo() {
+        if (historyStep > 0) {
+            historyStep--;
+            gridData = JSON.parse(history[historyStep]);
+            render();
+        }
+    }
+
+    function redo() {
+        if (historyStep < history.length - 1) {
+            historyStep++;
+            gridData = JSON.parse(history[historyStep]);
+            render();
+        }
+    }
+
+    function generateOutput() {
+        const rows = gridData.map(row => `"${row.join("")}"`);
+        const output = `const levelLayout = [\n    ${rows.join(",\n    ")}\n];`;
+        document.getElementById("output").value = output;
+    }
+
+    async function copyLevelLayout() {
+        await navigator.clipboard.writeText(document.getElementById("output").value);
+        const btn = event.target;
+        const original = btn.innerText;
+        btn.innerText = "Copied!";
+        setTimeout(() => btn.innerText = original, 1000);
+    }
+
+    function importLayout() {
+        const raw = prompt("Paste your levelLayout array here (e.g. ['RRR', 'YYY'])");
+        if (!raw) return;
+        try {
+            const cleaned = raw.match(/"([^"]+)"/g).map(s => s.replace(/"/g, ''));
+            gridData = cleaned.map(row => row.split(''));
+            document.getElementById('rows').value = gridData.length;
+            document.getElementById('cols').value = gridData[0].length;
+            render();
+        } catch(e) {
+            alert("Invalid format. Ensure it's an array of strings.");
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>

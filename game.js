@@ -1,16 +1,18 @@
 const levelLayout = [
-    "YGGYGRRYY",
-    "YBBGGBGBG",
-    "RGGBRRGBG",
-    "RBRGYGBGY",
-    "GGYYYYYGG",
-    "YGBGYGRBR",
-    "GBGRRGBGR", 
-    "GBGBGGBBY",  
-    "YYRRGYGGY"
+    "RGRYRRBRBRRYRGR",
+    "GGGYGGBGBGGYGGG",
+    "RBRYRRBRBRRYRBR",
+    "YBYYYYYYYYYYYBY",
+    "RBRYRRBRBRRYRBR",
+    "RBRYRRBRBRRYRBR",
+    "YBYYYYYYYYYYYBY",
+    "RBRYRRBRBRRYRBR",
+    "GGGYGGBGBGGYGGG",
+    "RGRYRRBRBRRYRGR"
 ];
 
-const GRID_SIZE = levelLayout.length;
+const ROWS = levelLayout.length;
+const COLS = Math.max(...levelLayout.map(row => row.length));
 
 let grid = [];
 let selectedColor = 'R';
@@ -37,8 +39,9 @@ const sounds = {
 /* ---------------- INIT ---------------- */
 function initGame() {
     grid = levelLayout.map(row => row.split(""));
-    movesLeft = 6;
+    movesLeft = 4;
     selectedColor = 'R';
+    roomNumber = 43062;
     renderGrid();
     renderControls();
     selectColor(selectedColor);
@@ -52,35 +55,52 @@ function animatedFloodFill(r, c, originalColor, targetColor) {
 
     function step() {
         if (queue.length === 0) {
-            isFlooding = false; 
-            checkWin();              
+            isFlooding = false;
+            checkWin();
             return;
         }
+
         const [x, y] = queue.shift();
         const key = `${x},${y}`;
+
         if (visited.has(key)) {
             step();
             return;
         }
+
         visited.add(key);
 
-        if (grid[x][y] !== originalColor) {           
+        // bounds check
+        if (
+            x < 0 ||
+            x >= grid.length ||
+            y < 0 ||
+            y >= grid[x].length
+        ) {
+            step();
+            return;
+        }
+
+        if (grid[x][y] !== originalColor) {
             step();
             return;
         }
 
         grid[x][y] = targetColor;
-        renderGrid();      
-        new Audio('pop.mp3').play();         
+        renderGrid();
+        new Audio('pop.mp3').play();
 
-        // Add neighbors
-        [[x-1,y],[x+1,y],[x,y-1],[x,y+1]].forEach(([nx,ny]) => {
-            if(nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE){
-                queue.push([nx,ny]);
-            }
+        // neighbors
+        [
+            [x - 1, y],
+            [x + 1, y],
+            [x, y - 1],
+            [x, y + 1]
+        ].forEach(([nx, ny]) => {
+            queue.push([nx, ny]);
         });
 
-        setTimeout(step, 50); // delay for animation
+        setTimeout(step, 50);
     }
 
     step();
@@ -105,16 +125,21 @@ function handleTileClick(r, c) {
 function renderGrid() {
     const container = document.getElementById("sokoban-grid");
     container.innerHTML = "";
+
     container.style.display = "grid";
-    container.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 40px)`;
+    container.style.gridTemplateColumns = `repeat(${COLS}, 40px)`;
     container.style.gridGap = "3px";
 
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
+    for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid[r].length; c++) {
+
             const cell = document.createElement("div");
             cell.className = "tile";
+
             cell.style.background = COLORS[grid[r][c]];
+
             cell.onclick = () => handleTileClick(r, c);
+
             container.appendChild(cell);
         }
     }
@@ -161,7 +186,7 @@ function checkWin() {
         const container = document.getElementById("game-wrapper");
         container.innerHTML = `
             <h2 class="centerTitle" style="color:#10b981;">🎉 PUZZLE SOLVED! 🎉</h2>
-            <p class="centerTitle">Room number is 35337</p>
+            <p class="centerTitle">Room number is ${roomNumber}</p>
             <button onclick="location.reload()">Play Again</button>
         `;
     } else if (movesLeft <= 0) {
