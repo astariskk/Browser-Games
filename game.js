@@ -1,14 +1,14 @@
 const levelLayout = [
-    "RGRYRRBRBRRYRGR",
-    "GGGYGGBGBGGYGGG",
-    "RBRYRRBRBRRYRBR",
-    "YBYYYYYYYYYYYBY",
-    "RBRYRRBRBRRYRBR",
-    "RBRYRRBRBRRYRBR",
-    "YBYYYYYYYYYYYBY",
-    "RBRYRRBRBRRYRBR",
-    "GGGYGGBGBGGYGGG",
-    "RGRYRRBRBRRYRGR"
+    "BBBBGGGGGGGGRRR",
+    "BRRRRGYGYGRRRBR",
+    "BRBYRGYYYGRBBBR",
+    "BRBYRGGYRRRBRBR",
+    "BBBYRGYYYYYYRBR",
+    "BYYYRGYBBBBYRBB",
+    "RRRRRGYBGGGYRRB",
+    "RGGGGGYBGRRYRBB",
+    "RYYYYYYBGYYYRRR",
+    "RBBBBBBBGYRRRGG"
 ];
 
 const ROWS = levelLayout.length;
@@ -41,7 +41,7 @@ function initGame() {
     grid = levelLayout.map(row => row.split(""));
     movesLeft = 4;
     selectedColor = 'R';
-    roomNumber = 43062;
+    roomNumber = 24425;
     renderGrid();
     renderControls();
     selectColor(selectedColor);
